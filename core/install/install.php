@@ -72,62 +72,35 @@
 	date_default_timezone_set('UTC');
 
 //if the config file exists then disable the install page
-	$config_exists = false;
-	if (file_exists("/usr/local/etc/fusionpbx/config.conf")) {
-		//bsd
-		$config_exists = true;
-	}
-	elseif (file_exists("/etc/fusionpbx/config.conf")) {
-		//linux
-		$config_exists = true;
-	}
-	if ($config_exists) {
-		$msg = "Already Installed";
-		//report to user
-		message::add($msg);
-		//redirect with message
-		header("Location: ".PROJECT_PATH."/index.php?msg=".urlencode($msg));
-		exit;
-	}
+$config_file_paths = [
+    "/usr/local/etc/fusionpbx/config.php" => "/usr/local/etc/fusionpbx",
+    "/etc/fusionpbx/config.php" => "/etc/fusionpbx",
+    __DIR__ . '/../resources/config.php' => __DIR__ . '/../resources'
+];
 
-//if the config.php exists create the config.conf file
-	if (!$config_exists) {
-		if (file_exists("/usr/local/etc/fusionpbx/config.php")) {
-			//bsd
-			$config_path = "/usr/local/etc/fusionpbx";
-		}
-		elseif (file_exists("/etc/fusionpbx/config.php")) {
-			//linux
-			$config_path = "/etc/fusionpbx";
-		}
-		if (isset($config_path)) {
-			if (is_writable($config_path)) {
-				//include the config.php file
-				include $config_path.'/config.php';
+foreach ($config_file_paths as $config_file => $config_path) {
+    if (file_exists($config_file)) {
+        if (is_writable($config_path)) {
+            include $config_file;
 
-				//build the config file
-				$install = new install;
-				$install->database_host = $db_host;
-				$install->database_port = $db_port;
-				$install->database_name = $db_name;
-				$install->database_username = $db_username;
-				$install->database_password = $db_password;
-				$install->config();
+            $install = new install;
+            $install->database_host = $db_host;
+            $install->database_port = $db_port;
+            $install->database_name = $db_name;
+            $install->database_username = $db_username;
+            $install->database_password = $db_password;
+            $install->config();
 
-				//redirect the user
-				header("Location: /");
-				exit;
-			}
-			else {
-				//config directory is not writable run commands as root
-				echo "Please run the following commands as root.<br /><br />\n";
-				echo "cd ".$document_root."<br />\n";
-				echo "php ".$document_root."/core/upgrade/upgrade.php<br />\n";
-				unset($config_path);
-				exit;
-			}
-		}
-	}
+            header("Location: /");
+            exit;
+        } else {
+            echo "Please run the following commands as root.<br /><br />\n";
+            echo "cd " . $document_root . "<br />\n";
+            echo "php " . $document_root . "/core/upgrade/upgrade.php<br />\n";
+            exit;
+        }
+    }
+}
 
 //process and save the data
 	if (count($_POST) > 0) {
